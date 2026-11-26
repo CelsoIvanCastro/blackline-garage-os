@@ -1,0 +1,48 @@
+{
+  "name": "blackline-garage-os",
+  "version": "0.1.0",
+  "description": "Plataforma local de restauracion automotriz asistida por IA para macOS.",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "postinstall": "electron-builder install-app-deps",
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit && electron-vite build",
+    "rebuild:native": "electron-builder install-app-deps",
+    "preview": "electron-vite preview",
+    "package": "electron-builder"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "extract-zip": "^2.0.1",
+    "ffmpeg-static": "^5.3.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@types/three": "^0.171.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "com.blackline.garageos",
+    "productName": "BLACKLINE GARAGE OS",
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ]
+  }
+}
