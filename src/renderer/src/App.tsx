@@ -37,7 +37,7 @@ function App() {
   })
   const [allProjects, setAllProjects] = useState<VehicleProject[]>([])
   const [query, setQuery] = useState('')
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('project'))
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)

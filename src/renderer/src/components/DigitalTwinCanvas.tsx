@@ -69,10 +69,18 @@ export function DigitalTwinCanvas({
     controls.enablePan = true
     controls.target.set(0, 1.1, 0)
 
-    scene.add(new THREE.AmbientLight('#ffffff', 1.6))
-    const keyLight = new THREE.DirectionalLight('#ffffff', 2.2)
+    scene.add(new THREE.HemisphereLight('#ffffff', '#8a8a80', 1.4))
+    const keyLight = new THREE.DirectionalLight('#ffffff', 2.4)
     keyLight.position.set(4, 7, 6)
-    scene.add(keyLight)
+    const rimLight = new THREE.DirectionalLight('#dfe8ff', 1.1)
+    rimLight.position.set(-6, 4, -5)
+    scene.add(keyLight, rimLight)
+    const floor = new THREE.Mesh(
+      new THREE.CircleGeometry(4.2, 64),
+      new THREE.MeshBasicMaterial({ color: '#d9d9d2', transparent: true, opacity: 0.55 })
+    )
+    floor.rotation.x = -Math.PI / 2
+    scene.add(floor, new THREE.GridHelper(8, 16, '#c4c4bb', '#dcdcd4'))
 
     const modelGroup = new THREE.Group()
     const markerGroup = new THREE.Group()
@@ -356,8 +364,9 @@ function applyMaterialMode(mesh: THREE.Mesh, transparentMode: boolean, xrayMode:
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
 
   for (const material of materials) {
-    material.transparent = transparentMode || xrayMode || layerOpacity < 1
-    material.opacity = xrayMode ? 0.22 : transparentMode ? 0.34 : layerOpacity
+    const baseOpacity = (material.userData.baseOpacity ??= material.opacity)
+    material.transparent = transparentMode || xrayMode || layerOpacity < 1 || baseOpacity < 1
+    material.opacity = xrayMode ? 0.22 : transparentMode ? 0.34 : Math.min(layerOpacity, baseOpacity)
     material.depthWrite = !xrayMode
     material.needsUpdate = true
   }

@@ -29,3 +29,7 @@ La arquitectura completa, estructura de carpetas, diseno de base de datos, roadm
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
+
+## Modo demostración
+
+Si el renderer corre fuera de Electron (por ejemplo, con Vite en el navegador), usa una API de vista previa con vehículos ficticios y un gemelo digital 3D de ejemplo (`src/renderer/public/demo/pickup-clasica.glb`, generado por código). Abre `?project=demo-1` para ver la Chevrolet C10 con sus piezas y daños marcados.

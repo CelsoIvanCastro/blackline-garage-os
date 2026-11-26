@@ -8,7 +8,10 @@ import type {
   CreateCostEntryInput,
   CreateVehicleProjectInput,
   DashboardStats,
+  DigitalTwinComponent,
+  DigitalTwinComponentState,
   DigitalTwinDashboard,
+  DigitalTwinLayerKey,
   GarageApi,
   InspectionDashboard,
   InventoryDashboard,
@@ -49,7 +52,36 @@ const stages: PipelineStage[] = stageSeedTuples.map(([id, code, name, position])
   projectCount: 0
 }))
 
-let projects: VehicleProject[] = []
+// Datos de demostración: solo existen en el modo navegador (sin Electron).
+const demoVehicles: Array<[PipelineStageCode, ProjectStatus, string, string, number, string, string, number, number]> = [
+  ['inspection_total_general', 'active', 'Chevrolet', 'C10', 1972, 'Azul cielo', 'Restauración completa, chasis original', 32000000, 2150000],
+  ['mechanical_electrical', 'active', 'Ford', 'Mustang Fastback', 1968, 'Highland Green', 'Motor 302 reconstruido, arnés nuevo', 54000000, 18900000],
+  ['exterior', 'active', 'Volkswagen', 'Sedán', 1985, 'Blanco Alpino', 'Láminas de piso y salpicaderas', 9500000, 4120000],
+  ['paint', 'active', 'Datsun', '510', 1971, 'Rojo Safari', 'Pintura original en dos tonos', 21000000, 12700000],
+  ['total_detailing', 'active', 'Chevrolet', 'Impala SS', 1964, 'Negro Tuxedo', 'Detallado de exhibición', 61000000, 55300000],
+  ['sound', 'paused', 'Dodge', 'Charger R/T', 1970, 'Plum Crazy', 'En espera de radio original', 48000000, 23400000],
+  ['completed', 'completed', 'Ford', 'Bronco', 1977, 'Arena', 'Entregado al cliente', 38000000, 36150000]
+]
+
+let projects: VehicleProject[] = demoVehicles.map(
+  ([stageCode, status, make, model, year, currentColor, notes, budgetCents, totalCostCents], index) =>
+    createPreviewProject({
+      id: `demo-${index + 1}`,
+      projectName: '',
+      stageCode,
+      make,
+      model,
+      year,
+      submodel: '',
+      vin: '',
+      currentColor,
+      oemColor: currentColor,
+      notes,
+      budgetCents,
+      totalCostCents,
+      status
+    })
+)
 let checklist: ChecklistItem[] = []
 let costs: CostEntry[] = []
 
@@ -239,17 +271,35 @@ export function createPreviewApi(): GarageApi {
       }
     },
     digitalTwin: {
-      getDashboard: async () => emptyDigitalTwinDashboard,
+      getDashboard: async (projectId) => (projectId === DEMO_TWIN_PROJECT ? getDemoTwin() : emptyDigitalTwinDashboard),
       generate: async () => {
         throw new Error('El gemelo digital requiere la app Electron para leer archivos locales.')
       },
       getJobLogs: async () => [],
       getJobStatus: async () => 'pending',
-      updateLayer: async () => {
-        throw new Error('El gemelo digital requiere la app Electron para persistir capas.')
+      updateLayer: async (input) => {
+        const layer = demoTwin.layers.find((candidate) => candidate.id === input.id)
+        if (!layer) {
+          throw new Error('El gemelo digital requiere la app Electron para persistir capas.')
+        }
+        Object.assign(layer, input, { updatedAt: new Date().toISOString() })
+        return layer
       },
-      createSnapshot: async () => {
-        throw new Error('El gemelo digital requiere la app Electron para persistir snapshots.')
+      createSnapshot: async (input) => {
+        if (input.digitalTwinId !== demoTwin.model?.id) {
+          throw new Error('El gemelo digital requiere la app Electron para persistir snapshots.')
+        }
+        const snapshot = {
+          id: crypto.randomUUID(),
+          digitalTwinId: input.digitalTwinId,
+          projectId: DEMO_TWIN_PROJECT,
+          name: input.name,
+          snapshotType: input.snapshotType ?? 'milestone',
+          componentStateJson: JSON.stringify(demoTwin.components.map(({ id, state }) => ({ id, state }))),
+          createdAt: new Date().toISOString()
+        }
+        demoTwin.snapshots = [snapshot, ...demoTwin.snapshots]
+        return snapshot
       }
     },
     oem: {
@@ -878,4 +928,98 @@ function getStage(code: PipelineStageCode): PipelineStage {
   }
 
   return stage
+}
+
+
+// Gemelo digital de demostración para la Chevrolet C10 (modelo GLB generado por código en public/demo).
+const DEMO_TWIN_PROJECT = 'demo-1'
+const demoTwin: DigitalTwinDashboard = buildDemoTwin()
+
+function getDemoTwin(): DigitalTwinDashboard {
+  return { ...demoTwin, layers: demoTwin.layers.map((layer) => ({ ...layer })), snapshots: [...demoTwin.snapshots] }
+}
+
+function buildDemoTwin(): DigitalTwinDashboard {
+  const twinId = 'demo-twin-c10'
+  const at = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString()
+  const stateColor: Record<DigitalTwinComponentState, string> = {
+    uninspected: '#9aa0a6',
+    pending: '#d9a400',
+    damaged: '#cc2f2f',
+    purchased_or_repaired: '#2f7fd1',
+    in_process: '#8a5cf5',
+    completed: '#2e9d5b'
+  }
+  const parts: Array<[string, DigitalTwinLayerKey, DigitalTwinComponentState, number, number, number, number, string]> = [
+    ['Cofre', 'exterior', 'completed', 1.45, 1.36, 0, 450000, 'Lámina enderezada y en primer.'],
+    ['Motor V8 350', 'engine', 'in_process', 1.6, 1.02, 0.42, 3800000, 'Rectificado de cabezas en curso.'],
+    ['Puerta izquierda', 'exterior', 'damaged', 0.05, 1.0, 0.93, 620000, 'Corrosión en la parte baja.'],
+    ['Salpicadera trasera derecha', 'exterior', 'pending', -1.55, 0.98, -0.95, 380000, 'Cotizar reemplazo.'],
+    ['Parabrisas', 'glass', 'purchased_or_repaired', 0.6, 1.66, 0, 290000, 'Comprado, pendiente de instalar.'],
+    ['Asiento de banca', 'upholstery', 'pending', -0.38, 1.6, 0, 540000, 'Retapizado en vinil original.'],
+    ['Arnés del tablero', 'electrical', 'in_process', 0.5, 1.5, -0.4, 210000, 'Arnés nuevo instalado al 60%.'],
+    ['Suspensión delantera', 'suspension', 'completed', 1.55, 0.42, 0.62, 960000, 'Bujes y amortiguadores nuevos.'],
+    ['Bastidor', 'chassis', 'damaged', -0.9, 0.5, 0.48, 1250000, 'Fisura reparada con soldadura, revisar.']
+  ]
+  const components: DigitalTwinComponent[] = parts.map(([name, layer, state, x, y, z, costCents, notes], index) => ({
+    id: `demo-part-${index + 1}`,
+    digitalTwinId: twinId,
+    projectId: DEMO_TWIN_PROJECT,
+    name,
+    layer,
+    state,
+    color: stateColor[state],
+    confidence: 0.82 + (index % 3) * 0.05,
+    sourceFindingId: null,
+    sourceAssetId: null,
+    sourceMediaUrl: null,
+    checklistItemIds: [],
+    pendingTaskCount: state === 'completed' ? 0 : 1 + (index % 3),
+    costCents,
+    position: { x, y, z },
+    notes,
+    createdAt: at(20),
+    updatedAt: at(index % 5)
+  }))
+  const layerKeys: DigitalTwinLayerKey[] = ['exterior', 'interior', 'engine', 'chassis', 'suspension', 'electrical', 'glass', 'upholstery']
+  return {
+    model: {
+      id: twinId,
+      projectId: DEMO_TWIN_PROJECT,
+      name: 'Chevrolet C10 1972',
+      status: 'ready',
+      modelUrl: './demo/pickup-clasica.glb',
+      sourceMediaCount: 148,
+      componentCount: components.length,
+      damageCount: 2,
+      metadata: { fuente: 'demo' },
+      createdAt: at(20),
+      updatedAt: at(1)
+    },
+    layers: layerKeys.map((layer) => ({ id: `demo-layer-${layer}`, digitalTwinId: twinId, layer, visible: true, opacity: 1, xrayEnabled: false, updatedAt: at(1) })),
+    components,
+    damageMarkers: [
+      { id: 'demo-dmg-1', digitalTwinId: twinId, projectId: DEMO_TWIN_PROJECT, damageType: 'Corrosión en compuerta', severity: 'pending', confidence: 0.88, sourceFindingId: null, sourceAssetId: null, sourceMediaUrl: null, position: { x: -2.62, y: 1.0, z: 0.5 }, createdAt: at(18) },
+      { id: 'demo-dmg-2', digitalTwinId: twinId, projectId: DEMO_TWIN_PROJECT, damageType: 'Abolladura en costado', severity: 'damaged', confidence: 0.91, sourceFindingId: null, sourceAssetId: null, sourceMediaUrl: null, position: { x: 0.9, y: 1.12, z: -0.92 }, createdAt: at(18) }
+    ],
+    snapshots: [
+      { id: 'demo-snap-1', digitalTwinId: twinId, projectId: DEMO_TWIN_PROJECT, name: 'Recepción del vehículo', snapshotType: 'initial', componentStateJson: '[]', createdAt: at(20) },
+      { id: 'demo-snap-2', digitalTwinId: twinId, projectId: DEMO_TWIN_PROJECT, name: 'Carrocería desarmada', snapshotType: 'milestone', componentStateJson: '[]', createdAt: at(9) }
+    ],
+    timeline: [
+      { id: 'demo-tl-1', title: 'Fotos de recepción importadas', body: '148 fotos procesadas por fotogrametría.', occurredAt: at(20), source: 'history' },
+      { id: 'demo-tl-2', title: 'Daños detectados', body: 'Corrosión en compuerta y abolladura lateral.', occurredAt: at(18), source: 'history' },
+      { id: 'demo-tl-3', title: 'Snapshot: Carrocería desarmada', body: 'Estado de piezas guardado.', occurredAt: at(9), source: 'snapshot' }
+    ],
+    zipImports: [],
+    photogrammetryJobs: [],
+    logs: [{ id: 'demo-log-1', level: 'info', message: 'Modelo de demostración cargado.', createdAt: at(1) }],
+    stats: {
+      restorationEstimate: 46,
+      sourceMediaCount: 148,
+      componentCount: components.length,
+      damageCount: 2,
+      linkedChecklistCount: 6
+    }
+  }
 }

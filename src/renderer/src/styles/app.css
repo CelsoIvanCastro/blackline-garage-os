@@ -3288,3 +3288,32 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---- Pulido visual (v0.2) ---- */
+:root { --bl-ink: #141412; --bl-line: #e3e3dc; --bl-accent: #c8102e; }
+
+/* Las filas del panel no deben comprimirse: el pipeline quedaba con 8px de alto. */
+.operations-panel { grid-auto-rows: max-content; }
+.pipeline-board { min-height: 300px; }
+.pipeline-column { min-height: 280px; transition: border-color .15s ease; }
+.pipeline-column:hover { border-color: #bdbdb4; }
+
+.summary-bar h2 { white-space: nowrap; font-size: 28px; letter-spacing: -0.02em; }
+.workspace-grid { grid-template-columns: minmax(0, 1fr) 440px; }
+.detail-panel { grid-template-rows: 380px minmax(0, 1fr); }
+
+.pipeline-section,
+.project-form,
+.digital-twin,
+.project-editor,
+.editor-empty { border-color: var(--bl-line); box-shadow: 0 1px 0 rgba(20, 20, 18, .04); }
+
+.pipeline-heading h3,
+.editor-heading h3,
+.digital-twin h3 { font-size: 19px; letter-spacing: -0.01em; }
+
+/* Franja de marca: una línea roja bajo el encabezado, como cinta de taller. */
+.summary-bar { border-bottom: 2px solid var(--bl-ink); margin-bottom: 18px; position: relative; }
+.summary-bar::after { content: ""; position: absolute; left: 4px; bottom: -2px; width: 64px; height: 2px; background: var(--bl-accent); }
+
+.three-viewport { background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #ecece6 70%); border-radius: 6px; }
